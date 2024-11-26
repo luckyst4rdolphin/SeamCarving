@@ -47,7 +47,6 @@ class SeamCarver(Picture):
         '''
         #bottom-top approach; get energies of the bottom row first
         energies= []
-        print(self.height())
         for x in range(self.width()):
             energies.append(self.energy(x, self.height()-1))
         
