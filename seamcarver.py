@@ -2,6 +2,7 @@
 
 from picture import Picture
 from math import sqrt
+from PIL import Image
 
 class SeamCarver(Picture):
     ## TO-DO: fill in the methods below
@@ -9,35 +10,38 @@ class SeamCarver(Picture):
         '''
         Return the energy of pixel at column i and row j
         '''
-        if i-1 < 0:
-            p1x = self[self.width()-1, j]
-            p2x = self[i+1,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
-        elif i+1 == self.width():
-            p1x = self[i-1, j]
-            p2x = self[0,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
+        if i < 0 or i > self.width() - 1 or j < 0 or j > self.height() - 1:
+            raise IndexError
+
+        # Handle the x-direction (horizontal)
+        if i - 1 < 0:
+            p1x = self[self.width() - 1, j]
+            p2x = self[i + 1, j]
+        elif i + 1 == self.width():
+            p1x = self[i - 1, j]
+            p2x = self[0, j]
         else:
-            p1x = self[i+1, j]
-            p2x = self[i-1,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
-        if j-1 < 0:
-            p1y = self[i, self.height()-1]
-            p2y = self[i,j+1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-        elif j+1 == self.height():
+            p1x = self[i + 1, j]
+            p2x = self[i - 1, j]
+        rgbx = {'rx': abs(p1x[0] - p2x[0]), 'gx': abs(p1x[1] - p2x[1]), 'bx': abs(p1x[2] - p2x[2])}
+
+        # Handle the y-direction (vertical)
+        if j - 1 < 0:
+            p1y = self[i, self.height() - 1]
+            p2y = self[i, j + 1]
+        elif j + 1 == self.height():
             p1y = self[i, 0]
-            p2y = self[i,j-1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
+            p2y = self[i, j - 1]
         else:
-            p1y = self[i, j+1]
-            p2y = self[i,j-1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-            #rgb= {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2]), 'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-        
-        e = sqrt((rgbx['rx']**2+rgbx['gx']**2+rgbx['bx']**2)+(rgby['ry']**2+rgby['gy']**2+rgby['by']**2))
+            p1y = self[i, j + 1]
+            p2y = self[i, j - 1]
+        rgby = {'ry': abs(p1y[0] - p2y[0]), 'gy': abs(p1y[1] - p2y[1]), 'by': abs(p1y[2] - p2y[2])}
+
+        # Compute the energy 
+        e = sqrt((rgbx['rx']**2 + rgbx['gx']**2 + rgbx['bx']**2) + (rgby['ry']**2 + rgby['gy']**2 + rgby['by']**2))
 
         return e
+
         raise NotImplementedError
 
     def find_vertical_seam(self) -> list[int]:
@@ -45,6 +49,7 @@ class SeamCarver(Picture):
         Return a sequence of indices representing the lowest-energy
         vertical seam
         '''
+        #bottom-top approach; get energies of the bottom row first
         energies= {}
 
         for y in range(self.height()):
@@ -96,8 +101,9 @@ class SeamCarver(Picture):
                 else:
                     min_index += 1
                     vseam.append(min_index)
-        return reversed(vseam)
-    
+        vseam.reverse()
+        return vseam
+            
         raise NotImplementedError
 
     def find_horizontal_seam(self) -> list[int]:
@@ -105,20 +111,61 @@ class SeamCarver(Picture):
         Return a sequence of indices representing the lowest-energy
         horizontal seam
         '''
+        #creates a rotated img, does not affect the original img itself
+        img = SeamCarver(self.picture().transpose(Image.Transpose.ROTATE_90)) #rotates the image so the columns and rows switch positions
+        horizontal_seam = img.find_vertical_seam() #runs find_vertical_seam on the rotated image
+        horizontal_seam.reverse()
+
+        return horizontal_seam
         raise NotImplementedError
 
     def remove_vertical_seam(self, seam: list[int]):
         '''
         Remove a vertical seam from the picture
         '''
+        if len(seam) != self.height(): #ensuring valid seam
+            raise SeamError("The length of the seam does not match the image's height.")
+        for i in range(len(seam) - 1):
+            if abs(seam[i] - seam[i + 1]) > 1:
+                raise SeamError("The seam's succeeding pixels differ by more than 1 index.")
+        if self.width() == 1: #cannot perform if there is only one width left
+            raise SeamError("The width is only 1. Cannot perform.")
+        
+        for y in range(self.height()):
+            seam_index = seam[y]  # Get the seam index for the current row
+            
+            # Shift all pixels in the row to the left of the seam
+            for x in range(seam_index, self.width() - 1):
+                self[x, y] = self[x + 1, y]
+            
+            # Remove the last pixel in the row
+            del self[self.width() - 1, y]
+            
+        # After shifting, the width of the image decreases by 1
+        self._width -= 1
 
-        raise NotImplementedError
 
     def remove_horizontal_seam(self, seam: list[int]):
         '''
         Remove a horizontal seam from the picture
         '''
-        raise NotImplementedError
-
+        
+        if len(seam) != self.width():
+            raise SeamError("The length of the seam does not match the image's width.")
+        if any(abs(seam[i] - seam[i + 1]) > 1 for i in range(len(seam) - 1)):
+            raise SeamError("The seam's succeeding pixels differ by more than 1 index.")
+        if self.height() == 1:
+            raise SeamError("The height is only 1. Cannot perform.")
+        
+        #rotate the image then remove the vseam
+        img = SeamCarver(self.picture().transpose(Image.Transpose.ROTATE_90))
+        seam = seam[::-1]
+        img.remove_vertical_seam(seam)
+        #rotate back the image
+        trueImg = img.picture().transpose(Image.Transpose.ROTATE_270)
+        self.clear()
+        self.__init__(trueImg)
+        
+        
 class SeamError(Exception):
     pass
