@@ -48,51 +48,60 @@ class SeamCarver(Picture):
         vertical seam
         '''
         #bottom-top approach; get energies of the bottom row first
-        energies= []
-        for x in range(self.width()):
-            energies.append(self.energy(x, self.height()-1))
-        
-        #apply M(i, j) = e(i, j) + min(M(i-1, j-1),M(i, j-1), M(i+1, j-1)) among other cases, i.e. edges/borders; bottom-top direction
-        for y in reversed(range(self.height())):
+        energies= {}
+
+        for y in range(self.height()):
             for x in range (self.width()):
                 add = 0
-                if x-1 < 0 and y-1 >= 0:
-                    add = min(self.energy(x,y-1),self.energy(x+1,y-1))
-                elif x+1 == self.width() and y-1 >=0:
-                    add = min(self.energy(x-1,y-1),self.energy(x,y-1))
-                elif y-1 < 0:
+                if y-1 < 0:
                     add = self.energy(x, y)
+                    energies[x, y] = add
+                elif x-1 < 0:
+                    add = self.energy(x,y) + min(energies[x,y-1],energies[x+1,y-1]) 
+                    energies[x, y] = add
+                elif x+1 == self.width():
+                    add = self.energy(x,y) + min(energies[x-1,y-1],energies[x,y-1])
+                    energies[x, y] = add
                 else:
-                    add = min(self.energy(x-1,y-1),self.energy(x,y-1),self.energy(x+1,y-1))
-                energies[x]+add
-
-        #backtracking; store index of minimum energy from top-bottom
-        m_index = energies.index(min(energies))
-        vseam = [m_index]
+                    add = self.energy(x,y) + min(energies[x-1,y-1],energies[x,y-1],energies[x+1,y-1])
+                    energies[x, y] = add
+        bottom = []
+        for x in range(self.width()):
+            bottom.append(energies[x,self.height()-1])
         
-        # Backtracking step
-        for y in range(1, self.height()):  # Start from the second row
-            subprobs = []
-            # Consider three neighboring pixels from the previous row
-            if m_index - 1 >= 0:
-                subprobs.append(self.energy(m_index - 1, y))  # Left neighbor
-            subprobs.append(self.energy(m_index, y))  # Center neighbor
-            if m_index + 1 < self.width():
-                subprobs.append(self.energy(m_index + 1, y))  # Right neighbor
-            
-            min_energy_index = subprobs.index(min(subprobs))  # Get the index of the minimum energy
-            
-            # Update the current column index based on the minimum energy
-            if min_energy_index == 0:
-                m_index -= 1  # Move left
-            elif min_energy_index == 1:
-                m_index  # Stay in the center
+        min_index = bottom.index(min(bottom))
+        vseam = [min_index]
+
+        for y in reversed(range(self.height())):
+            if y+-1 < 0:
+                min_index += 0
+            elif min_index-1 < 0:
+                subprobs = [energies[min_index, y-1], energies[min_index+1, y-1]]
+                if subprobs.index(min(subprobs)) == 0:
+                    vseam.append(min_index)
+                else:
+                    min_index += 1
+                    vseam.append(min_index)
+            elif min_index+1 == self.width():
+                subprobs = [energies[min_index, y-1], energies[min_index-1, y-1]]
+                if subprobs.index(min(subprobs)) == 0:
+                    vseam.append(min_index)
+                else:
+                    min_index -= 1
+                    vseam.append(min_index)
             else:
-                m_index += 1  # Move right
-            
-            vseam.append(m_index)
-                
+                subprobs = [energies[min_index-1,y-1],energies[min_index,y-1],energies[min_index+1,y-1]]
+                if subprobs.index(min(subprobs)) == 0:
+                    min_index -= 1
+                    vseam.append(min_index)
+                elif subprobs.index(min(subprobs)) == 1:
+                    vseam.append(min_index)
+                else:
+                    min_index += 1
+                    vseam.append(min_index)
+        vseam.reverse()
         return vseam
+            
         raise NotImplementedError
 
     def find_horizontal_seam(self) -> list[int]:
@@ -101,8 +110,9 @@ class SeamCarver(Picture):
         horizontal seam
         '''
         #creates a rotated img, does not affect the original img itself
-        img = SeamCarver(self.picture().transpose(Image.ROTATE_90)) #rotates the image so the columns and rows switch positions
+        img = SeamCarver(self.picture().transpose(Image.Transpose.ROTATE_90)) #rotates the image so the columns and rows switch positions
         horizontal_seam = img.find_vertical_seam() #runs find_vertical_seam on the rotated image
+        horizontal_seam.reverse()
 
         return horizontal_seam
         raise NotImplementedError
@@ -111,7 +121,6 @@ class SeamCarver(Picture):
         '''
         Remove a vertical seam from the picture
         '''
-        
         for y in range(self.height()):
             seam_index = seam[y]  # Get the seam index for the current row
             
@@ -132,7 +141,15 @@ class SeamCarver(Picture):
         '''
         Remove a horizontal seam from the picture
         '''
-        raise NotImplementedError
+        #transpose the image by rotating it 90 degrees
+        img = SeamCarver(self.picture().transpose(Image.ROTATE_90))
+        # remove the vertical seam
+        img.remove_vertical_seam(seam)
+        #img = SeamCarver(self.picture().transpose(Image.ROTATE_270))
+        rotateBack = img.picture().transpose(Image.ROTATE_270)
+        
+        if self._height <= 0:
+            raise SeamError("Image height is zero.")
 
 class SeamError(Exception):
     pass
