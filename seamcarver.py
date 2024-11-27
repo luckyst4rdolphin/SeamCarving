@@ -124,6 +124,11 @@ class SeamCarver(Picture):
         '''
         Remove a vertical seam from the picture
         '''
+        if len(seam) != (self.height()):
+            raise SeamError
+        if self.width() == 1:
+            raise SeamError
+        
         for y in range(self.height()):
             seam_index = seam[y]  # Get the seam index for the current row
             
@@ -137,14 +142,16 @@ class SeamCarver(Picture):
         # After shifting, the width of the image decreases by 1
         self._width -= 1
 
-        if self._width <= 1: 
-            raise SeamError("Invalid width")
 
     def remove_horizontal_seam(self, seam: list[int]):
         '''
         Remove a horizontal seam from the picture
         '''
-
+        if len(seam) != (self.width()):
+            raise SeamError
+        if self.height() == 1:
+            raise SeamError
+        
         for x in range(self.width()):  # Iterate over columns
             # get the index from the given seamHori
             seam_index= seam[x]
@@ -162,9 +169,6 @@ class SeamCarver(Picture):
 
         # update the height after removing the last row
         self._height -= 1
-
-        if self._height <= 1: 
-            raise SeamError("Invalid height")
 
 class SeamError(Exception):
     pass
