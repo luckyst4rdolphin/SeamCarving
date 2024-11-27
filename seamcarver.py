@@ -121,25 +121,25 @@ class SeamCarver(Picture):
         m_indexc = energies.index(min(energies))
         vseam = [m_index]
 
-        for y in range(self.height()):
+        for y in reverse(range(self.height())):
             if y+1 == self.height():
                 m_indexc+=0
             elif m_indexc-1 < 0:
-                subprobs = [self.energy(m_indexc,y+1),self.energy(m_indexc+1,y+1)]
+                subprobs = [self.energy(m_indexc,y-1),self.energy(m_indexc+1,y-1)]
                 if subprobs.index(min(subprobs)) == 0:
                     vseam.append(m_indexc)
                 else:
                     vseam.append(m_indexc+1)
                     m_indexc += 1
             elif m_indexc+1 == self.width():
-                subprobs = [self.energy(m_indexc,y+1),self.energy(m_indexc-1,y+1)]
+                subprobs = [self.energy(m_indexc,y-1),self.energy(m_indexc-1,y-1)]
                 if subprobs.index(min(subprobs)) == 0:
                     vseam.append(m_indexc)
                 else:
                     vseam.append(m_indexc-1)
                     m_indexc -= 1
             else:
-                subprobs = [self.energy(m_indexc-1,y+1),self.energy(m_indexc,y+1),self.energy(m_indexc+1,y+1)]
+                subprobs = [self.energy(m_indexc-1,y-1),self.energy(m_indexc,y-1),self.energy(m_indexc+1,y-1)]
                 if subprobs.index(min(subprobs)) == 0:
                     vseam.append(m_indexc-1)
                     m_indexc -= 1
@@ -148,8 +148,8 @@ class SeamCarver(Picture):
                 else:
                     vseam.append(m_indexc+1)
                     m_indexc += 1
-        print(vseam)
-        return vseam
+        print(reverse(vseam))
+        return reverse(vseam)
     
         raise NotImplementedError
 
