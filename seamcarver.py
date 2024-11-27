@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from picture import Picture
+import math
 from math import sqrt
 from PIL import Image
 
@@ -10,36 +11,38 @@ class SeamCarver(Picture):
         '''
         Return the energy of pixel at column i and row j
         '''
-        if i-1 < 0:
-            p1x = self[self.width()-1, j]
-            p2x = self[i+1,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
-        elif i+1 == self.width():
-            p1x = self[i-1, j]
-            p2x = self[0,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
+        if i < 0 or i > self.width() - 1 or j < 0 or j > self.height() - 1:
+            raise IndexError
+
+        # Handle the x-direction (horizontal)
+        if i - 1 < 0:
+            p1x = self[self.width() - 1, j]
+            p2x = self[i + 1, j]
+        elif i + 1 == self.width():
+            p1x = self[i - 1, j]
+            p2x = self[0, j]
         else:
-            p1x = self[i+1, j]
-            p2x = self[i-1,j]
-            rgbx = {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2])}
-        
-        if j-1 < 0:
-            p1y = self[i, self.height()-1]
-            p2y = self[i,j+1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-        elif j+1 == self.height():
+            p1x = self[i + 1, j]
+            p2x = self[i - 1, j]
+        rgbx = {'rx': abs(p1x[0] - p2x[0]), 'gx': abs(p1x[1] - p2x[1]), 'bx': abs(p1x[2] - p2x[2])}
+
+        # Handle the y-direction (vertical)
+        if j - 1 < 0:
+            p1y = self[i, self.height() - 1]
+            p2y = self[i, j + 1]
+        elif j + 1 == self.height():
             p1y = self[i, 0]
-            p2y = self[i,j-1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
+            p2y = self[i, j - 1]
         else:
-            p1y = self[i, j+1]
-            p2y = self[i,j-1]
-            rgby = {'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-            #rgb= {'rx':abs(p1x[0]-p2x[0]), 'gx':abs(p1x[1]-p2x[1]), 'bx':abs(p1x[2]-p2x[2]), 'ry':abs(p1y[0]-p2y[0]), 'gy':abs(p1y[1]-p2y[1]), 'by':abs(p1y[2]-p2y[2])}
-        
-        e = sqrt((rgbx['rx']**2+rgbx['gx']**2+rgbx['bx']**2)+(rgby['ry']**2+rgby['gy']**2+rgby['by']**2))
+            p1y = self[i, j + 1]
+            p2y = self[i, j - 1]
+        rgby = {'ry': abs(p1y[0] - p2y[0]), 'gy': abs(p1y[1] - p2y[1]), 'by': abs(p1y[2] - p2y[2])}
+
+        # Compute the energy 
+        e = sqrt((rgbx['rx']**2 + rgbx['gx']**2 + rgbx['bx']**2) + (rgby['ry']**2 + rgby['gy']**2 + rgby['by']**2))
 
         return e
+
         raise NotImplementedError
 
     def find_vertical_seam(self) -> list[int]:
@@ -134,22 +137,34 @@ class SeamCarver(Picture):
         # After shifting, the width of the image decreases by 1
         self._width -= 1
 
-        if self._width <= 0: 
-            raise SeamError("Image width is zero.")
+        if self._width <= 1: 
+            raise SeamError("Invalid width")
 
     def remove_horizontal_seam(self, seam: list[int]):
         '''
         Remove a horizontal seam from the picture
         '''
-        #transpose the image by rotating it 90 degrees
-        img = SeamCarver(self.picture().transpose(Image.ROTATE_90))
-        # remove the vertical seam
-        img.remove_vertical_seam(seam)
-        #img = SeamCarver(self.picture().transpose(Image.ROTATE_270))
-        rotateBack = img.picture().transpose(Image.ROTATE_270)
-        
-        if self._height <= 0:
-            raise SeamError("Image height is zero.")
+
+        for x in range(self.width()):  # Iterate over columns
+            # get the index from the given seamHori
+            seam_index= seam[x]
+
+            if (x,seam_index) in self:
+                # remove the pixel at seamHoriIndex at column i
+                del self[x, seam_index]
+
+            # shift all the remaining pixels upwards
+            for j in range(seam_index, self.height() - 1):
+                # assign the current row to get the pixel info of the next row
+                self[x, j] = self[x, j + 1]
+            
+            del self[x, self.height() - 1]
+
+        # update the height after removing the last row
+        self._height -= 1
+
+        if self._height <= 1: 
+            raise SeamError("Invalid height")
 
 class SeamError(Exception):
     pass
